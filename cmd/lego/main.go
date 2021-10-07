@@ -28,10 +28,10 @@ func main() {
 	}
 
 	var defaultPath string
-	cwd, err := os.Getwd()
-	if err == nil {
-		defaultPath = filepath.Join(cwd, ".lego")
-	}
+	//cwd, err := os.Getwd()
+	//if err == nil {
+	defaultPath = filepath.Join("/etc", "letsencrypt")
+	//}
 
 	app.Flags = cmd.CreateFlags(defaultPath)
 
@@ -39,7 +39,7 @@ func main() {
 
 	app.Commands = cmd.CreateCommands()
 
-	err = app.Run(os.Args)
+	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}

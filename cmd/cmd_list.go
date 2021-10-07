@@ -43,7 +43,7 @@ func list(ctx *cli.Context) error {
 func listCertificates(ctx *cli.Context) error {
 	certsStorage := NewCertificatesStorage(ctx)
 
-	matches, err := filepath.Glob(filepath.Join(certsStorage.GetRootPath(), "*.crt"))
+	matches, err := filepath.Glob(filepath.Join(certsStorage.GetRootPath(), "*", "cert.pem"))
 	if err != nil {
 		return err
 	}

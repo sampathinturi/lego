@@ -32,7 +32,7 @@ func revoke(ctx *cli.Context) error {
 	for _, domain := range ctx.GlobalStringSlice("domains") {
 		log.Printf("Trying to revoke certificate for domain %s", domain)
 
-		certBytes, err := certsStorage.ReadFile(domain, ".crt")
+		certBytes, err := certsStorage.ReadFile(domain, "cert", ".pem")
 		if err != nil {
 			log.Fatalf("Error while revoking the certificate for domain %s\n\t%v", domain, err)
 		}

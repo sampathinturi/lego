@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	baseCertificatesFolderName = "certificates"
+	baseCertificatesFolderName = "live"
 	baseArchivesFolderName     = "archives"
 )
 
@@ -26,7 +26,7 @@ const (
 //
 // rootPath:
 //
-//     ./.lego/certificates/
+//     ./.lego/live/
 //          │      └── root certificates directory
 //          └── "path" option
 //
@@ -73,16 +73,15 @@ func (s *CertificatesStorage) GetRootPath() string {
 
 func (s *CertificatesStorage) SaveResource(certRes *certificate.Resource) {
 	domain := certRes.Domain
-
 	// We store the certificate, private key and metadata in different files
 	// as web servers would not be able to work with a combined file.
-	err := s.WriteFile(domain, ".crt", certRes.Certificate)
+	err := s.WriteFile(domain, "cert", ".pem", certRes.Certificate)
 	if err != nil {
 		log.Fatalf("Unable to save Certificate for domain %s\n\t%v", domain, err)
 	}
 
 	if certRes.IssuerCertificate != nil {
-		err = s.WriteFile(domain, ".issuer.crt", certRes.IssuerCertificate)
+		err = s.WriteFile(domain, "fullchain", ".pem", certRes.IssuerCertificate)
 		if err != nil {
 			log.Fatalf("Unable to save IssuerCertificate for domain %s\n\t%v", domain, err)
 		}
@@ -90,13 +89,13 @@ func (s *CertificatesStorage) SaveResource(certRes *certificate.Resource) {
 
 	if certRes.PrivateKey != nil {
 		// if we were given a CSR, we don't know the private key
-		err = s.WriteFile(domain, ".key", certRes.PrivateKey)
+		err = s.WriteFile(domain, "privkey", ".pem", certRes.PrivateKey)
 		if err != nil {
 			log.Fatalf("Unable to save PrivateKey for domain %s\n\t%v", domain, err)
 		}
 
 		if s.pem {
-			err = s.WriteFile(domain, ".pem", bytes.Join([][]byte{certRes.Certificate, certRes.PrivateKey}, nil))
+			err = s.WriteFile(domain, domain, ".pem", bytes.Join([][]byte{certRes.Certificate, certRes.PrivateKey}, nil))
 			if err != nil {
 				log.Fatalf("Unable to save Certificate and PrivateKey in .pem for domain %s\n\t%v", domain, err)
 			}
@@ -111,14 +110,14 @@ func (s *CertificatesStorage) SaveResource(certRes *certificate.Resource) {
 		log.Fatalf("Unable to marshal CertResource for domain %s\n\t%v", domain, err)
 	}
 
-	err = s.WriteFile(domain, ".json", jsonBytes)
+	err = s.WriteFile(domain, domain, ".json", jsonBytes)
 	if err != nil {
 		log.Fatalf("Unable to save CertResource for domain %s\n\t%v", domain, err)
 	}
 }
 
 func (s *CertificatesStorage) ReadResource(domain string) certificate.Resource {
-	raw, err := s.ReadFile(domain, ".json")
+	raw, err := s.ReadFile(domain, domain, ".json")
 	if err != nil {
 		log.Fatalf("Error while loading the meta data for domain %s\n\t%v", domain, err)
 	}
@@ -131,8 +130,8 @@ func (s *CertificatesStorage) ReadResource(domain string) certificate.Resource {
 	return resource
 }
 
-func (s *CertificatesStorage) ExistsFile(domain, extension string) bool {
-	filePath := s.GetFileName(domain, extension)
+func (s *CertificatesStorage) ExistsFile(domain, baseFileName, extension string) bool {
+	filePath := s.GetFileName(domain, baseFileName, extension)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false
@@ -142,17 +141,17 @@ func (s *CertificatesStorage) ExistsFile(domain, extension string) bool {
 	return true
 }
 
-func (s *CertificatesStorage) ReadFile(domain, extension string) ([]byte, error) {
-	return os.ReadFile(s.GetFileName(domain, extension))
+func (s *CertificatesStorage) ReadFile(domain, baseFileName, extension string) ([]byte, error) {
+	return os.ReadFile(s.GetFileName(sanitizedDomain(domain), baseFileName, extension))
 }
 
-func (s *CertificatesStorage) GetFileName(domain, extension string) string {
-	filename := sanitizedDomain(domain) + extension
-	return filepath.Join(s.rootPath, filename)
+func (s *CertificatesStorage) GetFileName(domain, baseFileName, extension string) string {
+	filename := baseFileName + extension
+	return filepath.Join(s.rootPath, sanitizedDomain(domain), filename)
 }
 
-func (s *CertificatesStorage) ReadCertificate(domain, extension string) ([]*x509.Certificate, error) {
-	content, err := s.ReadFile(domain, extension)
+func (s *CertificatesStorage) ReadCertificate(domain,baseFileName, extension string) ([]*x509.Certificate, error) {
+	content, err := s.ReadFile(domain,baseFileName, extension)
 	if err != nil {
 		return nil, err
 	}
@@ -161,21 +160,21 @@ func (s *CertificatesStorage) ReadCertificate(domain, extension string) ([]*x509
 	return certcrypto.ParsePEMBundle(content)
 }
 
-func (s *CertificatesStorage) WriteFile(domain, extension string, data []byte) error {
-	var baseFileName string
-	if s.filename != "" {
-		baseFileName = s.filename
-	} else {
-		baseFileName = sanitizedDomain(domain)
-	}
-
-	filePath := filepath.Join(s.rootPath, baseFileName+extension)
+func (s *CertificatesStorage) WriteFile(domain, baseFileName, extension string, data []byte) error {
+	//var baseFileName string
+	//if s.filename != "" {
+	//	baseFileName = s.filename
+	//} else {
+	//	baseFileName = sanitizedDomain(domain)
+	//}
+	createNonExistingFolder(filepath.Join(s.rootPath, sanitizedDomain(domain)))
+	filePath := filepath.Join(s.rootPath, sanitizedDomain(domain), baseFileName+extension)
 
 	return os.WriteFile(filePath, data, filePerm)
 }
 
 func (s *CertificatesStorage) MoveToArchive(domain string) error {
-	matches, err := filepath.Glob(filepath.Join(s.rootPath, sanitizedDomain(domain)+".*"))
+	matches, err := filepath.Glob(filepath.Join(s.rootPath, sanitizedDomain(domain), ".*"))
 	if err != nil {
 		return err
 	}

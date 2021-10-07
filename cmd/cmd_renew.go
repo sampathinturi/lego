@@ -100,7 +100,7 @@ func renewForDomains(ctx *cli.Context, client *lego.Client, certsStorage *Certif
 	// load the cert resource from files.
 	// We store the certificate, private key and metadata in different files
 	// as web servers would not be able to work with a combined file.
-	certificates, err := certsStorage.ReadCertificate(domain, ".crt")
+	certificates, err := certsStorage.ReadCertificate(domain, "cert",".pem")
 	if err != nil {
 		log.Fatalf("Error while loading the certificate for domain %s\n\t%v", domain, err)
 	}
@@ -119,7 +119,7 @@ func renewForDomains(ctx *cli.Context, client *lego.Client, certsStorage *Certif
 
 	var privateKey crypto.PrivateKey
 	if ctx.Bool("reuse-key") {
-		keyBytes, errR := certsStorage.ReadFile(domain, ".key")
+		keyBytes, errR := certsStorage.ReadFile(domain, "privkey", ".pem")
 		if errR != nil {
 			log.Fatalf("Error while loading the private key for domain %s\n\t%v", domain, errR)
 		}
@@ -146,8 +146,8 @@ func renewForDomains(ctx *cli.Context, client *lego.Client, certsStorage *Certif
 	certsStorage.SaveResource(certRes)
 
 	meta[renewEnvCertDomain] = domain
-	meta[renewEnvCertPath] = certsStorage.GetFileName(domain, ".crt")
-	meta[renewEnvCertKeyPath] = certsStorage.GetFileName(domain, ".key")
+	meta[renewEnvCertPath] = certsStorage.GetFileName(domain, "cert", ".pem")
+	meta[renewEnvCertKeyPath] = certsStorage.GetFileName(domain, "privkey", ".pem")
 
 	return launchHook(ctx.String("renew-hook"), meta)
 }
@@ -163,7 +163,7 @@ func renewForCSR(ctx *cli.Context, client *lego.Client, certsStorage *Certificat
 	// load the cert resource from files.
 	// We store the certificate, private key and metadata in different files
 	// as web servers would not be able to work with a combined file.
-	certificates, err := certsStorage.ReadCertificate(domain, ".crt")
+	certificates, err := certsStorage.ReadCertificate(domain, "cert", ".pem")
 	if err != nil {
 		log.Fatalf("Error while loading the certificate for domain %s\n\t%v", domain, err)
 	}
@@ -191,8 +191,8 @@ func renewForCSR(ctx *cli.Context, client *lego.Client, certsStorage *Certificat
 	certsStorage.SaveResource(certRes)
 
 	meta[renewEnvCertDomain] = domain
-	meta[renewEnvCertPath] = certsStorage.GetFileName(domain, ".crt")
-	meta[renewEnvCertKeyPath] = certsStorage.GetFileName(domain, ".key")
+	meta[renewEnvCertPath] = certsStorage.GetFileName(domain, "cert", ".pem")
+	meta[renewEnvCertKeyPath] = certsStorage.GetFileName(domain, "privkey", ".pem")
 
 	return launchHook(ctx.String("renew-hook"), meta)
 }
